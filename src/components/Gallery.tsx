@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useRef, useEffect, useState } from 'react'
 
 const API_URL = 'http://localhost:3001'
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, '') // Remove trailing slash if any
 
 interface SplatItem {
     id: string
@@ -12,33 +13,45 @@ interface SplatItem {
 }
 
 export default function Gallery() {
-    const { setViewMode, setCurrentSplat, startTransition } = useStore()
+    const { setViewMode, setCurrentSplat, startTransition, setIsStatic } = useStore()
     const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
     const [splats, setSplats] = useState<SplatItem[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Fetch splats from API
+    // Fetch splats from API or static manifest
     useEffect(() => {
         const fetchSplats = async () => {
             try {
-                const res = await fetch(`${API_URL}/api/splats`)
-                if (!res.ok) throw new Error('Failed to fetch splats')
-                const data = await res.json()
+                let data
+
+                try {
+                    // Try API first (only really works on localhost)
+                    const res = await fetch(`${API_URL}/api/splats`)
+                    if (!res.ok) throw new Error('API not available')
+                    data = await res.json()
+                    setIsStatic(false)
+                } catch (apiErr) {
+                    // Fallback to static manifest
+                    console.log('API not available, falling back to static manifest...')
+                    const res = await fetch(`${BASE_URL}/splats.json`)
+                    if (!res.ok) throw new Error('Failed to load splat manifest')
+                    data = await res.json()
+                    setIsStatic(true)
+                }
 
                 const items: SplatItem[] = data.map((s: { id: string; filename: string }) => ({
                     id: s.id,
                     name: s.id,
-                    url: `/splats/${s.filename}`,
-                    thumbnail: `/thumbnails/${s.id}.jpg`
+                    url: `${BASE_URL}/splats/${s.filename}`,
+                    thumbnail: `${BASE_URL}/thumbnails/${s.id}.jpg`
                 }))
 
                 setSplats(items)
                 setError(null)
             } catch (err) {
                 console.error('Failed to fetch splats:', err)
-                setError('Could not load splats. Make sure API server is running on port 3001.')
-                // Fallback to scanning public folder wouldn't work in browser, so just show error
+                setError('Could not load splats. Even the static manifest is missing.')
             } finally {
                 setLoading(false)
             }

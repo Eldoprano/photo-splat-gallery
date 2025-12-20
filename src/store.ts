@@ -12,10 +12,12 @@ interface AppState {
     currentSplatId: string | null
     currentSplatFormat: 'ply' | 'splat' | null  // File format for dropped files
     isPointCloud: boolean
+    isStatic: boolean
     transition: TransitionState
     setViewMode: (mode: 'gallery' | 'viewer' | 'drop') => void
     setCurrentSplat: (url: string | null, id?: string | null, format?: 'ply' | 'splat' | null) => void
     setIsPointCloud: (isPoint: boolean) => void
+    setIsStatic: (isStatic: boolean) => void
     startTransition: (rect: TransitionState['thumbnailRect'], thumbUrl: string) => void
     endTransition: () => void
 }
@@ -26,6 +28,7 @@ export const useStore = create<AppState>((set) => ({
     currentSplatId: null,
     currentSplatFormat: null,
     isPointCloud: false,
+    isStatic: true,
     transition: {
         isTransitioning: false,
         thumbnailRect: null,
@@ -38,6 +41,7 @@ export const useStore = create<AppState>((set) => ({
         currentSplatFormat: format,
     }),
     setIsPointCloud: (isPoint) => set({ isPointCloud: isPoint }),
+    setIsStatic: (isStatic) => set({ isStatic }),
     startTransition: (rect, thumbUrl) => set({
         transition: {
             isTransitioning: true,
