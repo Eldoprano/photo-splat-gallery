@@ -1,0 +1,122 @@
+import { useStore } from '../store'
+import { motion } from 'framer-motion'
+import { useRef, useEffect, useState } from 'react'
+
+const API_URL = 'http://localhost:3001'
+
+interface SplatItem {
+    id: string
+    name: string
+    url: string
+    thumbnail: string
+}
+
+export default function Gallery() {
+    const { setViewMode, setCurrentSplat, startTransition } = useStore()
+    const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+    const [splats, setSplats] = useState<SplatItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    // Fetch splats from API
+    useEffect(() => {
+        const fetchSplats = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/splats`)
+                if (!res.ok) throw new Error('Failed to fetch splats')
+                const data = await res.json()
+
+                const items: SplatItem[] = data.map((s: { id: string; filename: string }) => ({
+                    id: s.id,
+                    name: s.id,
+                    url: `/splats/${s.filename}`,
+                    thumbnail: `/thumbnails/${s.id}.jpg`
+                }))
+
+                setSplats(items)
+                setError(null)
+            } catch (err) {
+                console.error('Failed to fetch splats:', err)
+                setError('Could not load splats. Make sure API server is running on port 3001.')
+                // Fallback to scanning public folder wouldn't work in browser, so just show error
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchSplats()
+    }, [])
+
+    const handleSelect = (item: SplatItem, element: HTMLDivElement | null) => {
+        // Capture the thumbnail's position for the zoom animation
+        if (element) {
+            const rect = element.getBoundingClientRect()
+            startTransition(
+                { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+                item.thumbnail || ''
+            )
+        }
+
+        // Set the current splat and switch to viewer
+        setCurrentSplat(item.url, item.id)
+        setViewMode('viewer')
+    }
+
+    return (
+        <div className="p-8 w-full h-full overflow-y-auto bg-everforest-bg-hard">
+            <h1 className="text-4xl font-bold mb-8 text-everforest-green font-display">Splat Gallery</h1>
+
+            {loading && (
+                <div className="text-everforest-fg/50 text-center py-12">Loading splats...</div>
+            )}
+
+            {error && (
+                <div className="bg-red-900/30 text-red-300 p-4 rounded-lg mb-6">
+                    {error}
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {splats.map((item) => (
+                    <motion.div
+                        key={item.id}
+                        ref={(el) => {
+                            if (el) cardRefs.current.set(item.id, el)
+                        }}
+                        onClick={(e) => handleSelect(item, e.currentTarget as HTMLDivElement)}
+                        className="group relative aspect-video bg-everforest-bg-medium rounded-xl overflow-hidden border-2 border-transparent hover:border-everforest-green cursor-pointer shadow-lg hover:shadow-everforest-green/20 transition-all"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                    >
+                        <img
+                            src={item.thumbnail}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                // Hide broken image, show placeholder
+                                (e.target as HTMLImageElement).style.display = 'none'
+                            }}
+                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-everforest-bg-soft text-everforest-fg/50 group-hover:text-everforest-fg transition-colors -z-10">
+                            <div className="w-12 h-12 rounded-full border-2 border-current mb-2 flex items-center justify-center opacity-50 group-hover:opacity-100">
+                                <span className="text-xl font-bold">3D</span>
+                            </div>
+                            <span>{item.name}</span>
+                        </div>
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                            <span className="text-white font-bold text-lg">{item.name}</span>
+                            <span className="text-white/70 text-sm">Tap to view</span>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+
+            {!loading && splats.length === 0 && !error && (
+                <div className="text-everforest-fg/50 text-center py-12">
+                    No splats found. Add .ply files to public/splats/
+                </div>
+            )}
+        </div>
+    )
+}
