@@ -32,6 +32,3 @@ uploads/
 
 # Python virtual environment
 .venv/
-
-# Configs (user-specific camera positions)
-public/configs/
