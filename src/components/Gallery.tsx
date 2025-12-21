@@ -25,6 +25,7 @@ export default function Gallery() {
         const fetchSplats = async () => {
             try {
                 let data
+                let isStaticMode = false
 
                 try {
                     // Try API first (only really works on localhost)
@@ -38,12 +39,14 @@ export default function Gallery() {
                     const res = await fetch(`${BASE_URL}/splats.json`)
                     if (!res.ok) throw new Error('Failed to load splat manifest')
                     data = await res.json()
+                    isStaticMode = true
                     setIsStatic(true)
                 }
 
                 const items: SplatItem[] = data.map((s: { id: string; filename: string }) => {
-                    // Check if compressed mode is requested via URL param
-                    const useCompressed = new URLSearchParams(window.location.search).get('compressed') === 'true'
+                    // In static mode (GitHub Pages), only compressed files are available
+                    // Also allow manual override via URL param
+                    const useCompressed = isStaticMode || new URLSearchParams(window.location.search).get('compressed') === 'true'
                     const splatUrl = useCompressed
                         ? `${BASE_URL}/splats-compressed/${s.id}.spz`
                         : `${BASE_URL}/splats/${s.filename}`
