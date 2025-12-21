@@ -1,8 +1,9 @@
 import { useStore } from '../store'
 import { motion } from 'framer-motion'
 import { useRef, useEffect, useState } from 'react'
+import { Upload } from 'lucide-react'
 
-const API_URL = 'http://localhost:3001'
+
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, '') // Remove trailing slash if any
 
 interface SplatItem {
@@ -27,7 +28,7 @@ export default function Gallery() {
 
                 try {
                     // Try API first (only really works on localhost)
-                    const res = await fetch(`${API_URL}/api/splats`)
+                    const res = await fetch(`/api/splats`) // Use proxy
                     if (!res.ok) throw new Error('API not available')
                     data = await res.json()
                     setIsStatic(false)
@@ -40,12 +41,20 @@ export default function Gallery() {
                     setIsStatic(true)
                 }
 
-                const items: SplatItem[] = data.map((s: { id: string; filename: string }) => ({
-                    id: s.id,
-                    name: s.id,
-                    url: `${BASE_URL}/splats/${s.filename}`,
-                    thumbnail: `${BASE_URL}/thumbnails/${s.id}.jpg`
-                }))
+                const items: SplatItem[] = data.map((s: { id: string; filename: string }) => {
+                    // Check if compressed mode is requested via URL param
+                    const useCompressed = new URLSearchParams(window.location.search).get('compressed') === 'true'
+                    const splatUrl = useCompressed
+                        ? `${BASE_URL}/splats-compressed/${s.id}.spz`
+                        : `${BASE_URL}/splats/${s.filename}`
+
+                    return {
+                        id: s.id,
+                        name: s.id,
+                        url: splatUrl,
+                        thumbnail: `${BASE_URL}/thumbnails/${s.id}.jpg`
+                    }
+                })
 
                 setSplats(items)
                 setError(null)
@@ -58,7 +67,7 @@ export default function Gallery() {
         }
 
         fetchSplats()
-    }, [])
+    }, [setIsStatic])
 
     const handleSelect = (item: SplatItem, element: HTMLDivElement | null) => {
         // Capture the thumbnail's position for the zoom animation
@@ -77,7 +86,17 @@ export default function Gallery() {
 
     return (
         <div className="p-8 w-full h-full overflow-y-auto bg-everforest-bg-hard">
-            <h1 className="text-4xl font-bold mb-8 text-everforest-green font-display">Splat Gallery</h1>
+            <div className="flex items-center justify-between mb-8">
+                <h1 className="text-4xl font-bold text-everforest-green font-display">Splat Gallery</h1>
+
+                <button
+                    onClick={() => setViewMode('ingest')}
+                    className="flex items-center gap-2 px-4 py-2 bg-everforest-green text-everforest-bg-hard rounded-lg font-bold hover:bg-everforest-aqua transition-colors shadow-lg"
+                >
+                    <Upload size={20} />
+                    <span>Upload New</span>
+                </button>
+            </div>
 
             {loading && (
                 <div className="text-everforest-fg/50 text-center py-12">Loading splats...</div>

@@ -1,6 +1,6 @@
 # Photo Splat Gallery
 
-A beautiful 3D Gaussian Splat viewer built with React, TypeScript, and Three.js.
+A nice and vibe coded 3D Gaussian Splat viewer built with React, TypeScript, and Three.js using the [@sparkjsdev/spark](https://github.com/sparkjsdev/spark) renderer.
 
 ## 🌐 Live Demo
 
@@ -8,31 +8,65 @@ A beautiful 3D Gaussian Splat viewer built with React, TypeScript, and Three.js.
 
 ## Features
 
-- 📷 View and manage Gaussian Splat (.ply) files
-- 🎮 Interactive 3D navigation with mouse controls
-- 🗑️ Delete splats directly from the viewer
-- 🖼️ Automatic thumbnail generation
-- 📱 Responsive design
+- 📷 View Gaussian Splats in an interactive 3D gallery
+- 🎮 Smooth navigation with WASD fly controls + mouse orbit
+- 🔮 Reveal animation when loading splats
+- 🥽 AR mode support (WebXR)
+- ⚡ Compressed `.spz` format for fast loading
 
 ## Tech Stack
 
 - React 19 + TypeScript
-- Three.js + React Three Fiber
-- Gaussian Splats 3D
+- Three.js + [@sparkjsdev/spark](https://github.com/sparkjsdev/spark)
 - Vite
 - TailwindCSS
+- Express (for local development server)
 
-## Development
+## Local Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Start development server
-npm run dev
+# Start the full development stack (with API server)
+./scripts/start.sh
 
-# Build for production
-npm run build
+# Or just run the frontend
+npm run dev
+```
+
+## Creating Your Own Splats
+
+This gallery displays pre-generated 3D Gaussian Splats. To create your own splats from photos:
+
+1. Use a tool like [ml-sharp](https://github.com/eldoprano/ml-sharp) or other Gaussian Splatting software
+2. Export as `.ply` format
+3. Place the `.ply` files in `public/splats/`
+4. Run `node scripts/compress_spark.js` to compress to `.spz` format
+5. Run `./scripts/start.sh` to generate thumbnails and start the server
+
+> **Note:** The 2D-to-splat conversion is not included in this repository.
+
+## Adding Splats to the Gallery
+
+1. Add your `.ply` files to `public/splats/`
+2. Compress them: `node scripts/compress_spark.js`
+3. Generate thumbnails by running the server and using Puppeteer screenshot automation
+4. For manual thumbnails, use the camera button in the viewer to set a default view
+
+## Project Structure
+
+```
+public/
+├── splats/              # Original .ply files (not committed to git)
+├── splats-compressed/   # Compressed .spz files (deployed)
+├── thumbnails/          # Gallery thumbnails
+└── configs/             # Saved camera positions
+scripts/
+├── start.sh             # Full development stack
+├── api-server.cjs       # Express API server
+├── preview-server.cjs   # Static file server
+└── compress_spark.js    # PLY to SPZ compression
 ```
 
 ## License

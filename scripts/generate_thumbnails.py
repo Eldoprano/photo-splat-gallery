@@ -268,6 +268,10 @@ def main():
         thumb_pub = THUMBS_DIR_PUBLIC / thumb_name
         thumb_dist = THUMBS_DIR_DIST / thumb_name
         
+        if thumb_pub.exists():
+            # print(f"  {ply_file.name}... Skip (exists)")
+            continue
+
         print(f"  {ply_file.name}...", end=" ", flush=True)
         
         try:

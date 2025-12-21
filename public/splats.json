@@ -1,32 +1,230 @@
 [
   {
+    "id": "IMG_0031~2",
+    "filename": "IMG_0031~2.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
     "id": "IMG_0058~2",
     "filename": "IMG_0058~2.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_0155",
+    "filename": "IMG_0155.ply",
+    "format": "ply",
     "hasThumb": true
   },
   {
     "id": "IMG_0203~3.CR2",
     "filename": "IMG_0203~3.CR2.ply",
+    "format": "ply",
     "hasThumb": true
   },
   {
     "id": "IMG_0254",
     "filename": "IMG_0254.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_0266~2.CR2",
+    "filename": "IMG_0266~2.CR2.ply",
+    "format": "ply",
     "hasThumb": true
   },
   {
     "id": "IMG_0308~2",
     "filename": "IMG_0308~2.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_20230209_093003~2",
+    "filename": "IMG_20230209_093003~2.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_20230302_123739",
+    "filename": "IMG_20230302_123739.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_20230307_132935~3",
+    "filename": "IMG_20230307_132935~3.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_20250307_155218",
+    "filename": "IMG_20250307_155218.ply",
+    "format": "ply",
     "hasThumb": true
   },
   {
     "id": "IMG_20251218_182717 (1)",
     "filename": "IMG_20251218_182717 (1).ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_8960",
+    "filename": "IMG_8960.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "IMG_9311",
+    "filename": "IMG_9311.ply",
+    "format": "ply",
     "hasThumb": true
   },
   {
     "id": "IMG_9907",
     "filename": "IMG_9907.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045751-515787931",
+    "filename": "image-1766300045751-515787931.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045758-447388484",
+    "filename": "image-1766300045758-447388484.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045767-105717174",
+    "filename": "image-1766300045767-105717174.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045774-701149804",
+    "filename": "image-1766300045774-701149804.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045784-200206590",
+    "filename": "image-1766300045784-200206590.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045796-478722808",
+    "filename": "image-1766300045796-478722808.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045804-108271995",
+    "filename": "image-1766300045804-108271995.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766300045814-365265755",
+    "filename": "image-1766300045814-365265755.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034848-707499333",
+    "filename": "image-1766301034848-707499333.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034858-231009486",
+    "filename": "image-1766301034858-231009486.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034865-514810092",
+    "filename": "image-1766301034865-514810092.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034872-842895083",
+    "filename": "image-1766301034872-842895083.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034888-396314569",
+    "filename": "image-1766301034888-396314569.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034905-533969479",
+    "filename": "image-1766301034905-533969479.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034932-29438904",
+    "filename": "image-1766301034932-29438904.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301034999-108379576",
+    "filename": "image-1766301034999-108379576.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035013-138285939",
+    "filename": "image-1766301035013-138285939.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035024-166409143",
+    "filename": "image-1766301035024-166409143.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035063-165022219",
+    "filename": "image-1766301035063-165022219.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035082-623725824",
+    "filename": "image-1766301035082-623725824.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035132-919451900",
+    "filename": "image-1766301035132-919451900.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035139-571819998",
+    "filename": "image-1766301035139-571819998.ply",
+    "format": "ply",
+    "hasThumb": true
+  },
+  {
+    "id": "image-1766301035146-197621262",
+    "filename": "image-1766301035146-197621262.ply",
+    "format": "ply",
     "hasThumb": true
   }
 ]

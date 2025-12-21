@@ -14,13 +14,20 @@ try {
         process.exit(0);
     }
 
+    const validExtensions = ['.ply', '.splat', '.ksplat', '.spz'];
+
     const files = fs.readdirSync(SPLATS_DIR)
-        .filter(f => f.endsWith('.ply'))
-        .map(f => ({
-            id: f.replace('.ply', ''),
-            filename: f,
-            hasThumb: fs.existsSync(path.join(THUMBS_DIR, f.replace('.ply', '.jpg')))
-        }));
+        .filter(f => validExtensions.some(ext => f.toLowerCase().endsWith(ext)))
+        .map(f => {
+            const ext = path.extname(f);
+            const baseName = path.basename(f, ext);
+            return {
+                id: baseName,
+                filename: f,
+                format: ext.substring(1), // 'ply', 'spz', etc.
+                hasThumb: fs.existsSync(path.join(THUMBS_DIR, baseName + '.jpg'))
+            };
+        });
 
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(files, null, 2));
     console.log(`✅ Manifest generated with ${files.length} items at ${OUTPUT_FILE}`);

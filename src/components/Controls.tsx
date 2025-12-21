@@ -5,7 +5,7 @@ import * as THREE from 'three'
 
 export default function Controls() {
     const { camera } = useThree()
-    const { isPointCloud, setIsPointCloud } = useStore()
+    const { isPointCloud } = useStore() // Removed unused setIsPointCloud
 
     // Input state
     const keys = useRef<{ [key: string]: boolean }>({})
@@ -14,9 +14,6 @@ export default function Controls() {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             keys.current[e.key.toLowerCase()] = true
-            if (e.key.toLowerCase() === 'p') {
-                setIsPointCloud(!isPointCloud)
-            }
         }
         const handleKeyUp = (e: KeyboardEvent) => {
             keys.current[e.key.toLowerCase()] = false

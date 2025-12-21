@@ -1,75 +1,77 @@
-const puppeteer = require('puppeteer');
+#!/usr/bin/env node
+/**
+ * Thumbnail Generation Helper
+ * 
+ * This script helps generate thumbnails for your Gaussian splats.
+ * 
+ * Since headless rendering of Gaussian splats is complex and your PLY format
+ * may not be compatible with all libraries, here are your best options:
+ * 
+ * == OPTION 1: Use the Drop Viewer (Recommended) ==
+ * 
+ * 1. Run the dev server: npm run dev
+ * 2. Go to: http://localhost:5174/photo-splat-gallery/?view=drop
+ * 3. Drop each splat file
+ * 4. Navigate to the right angle
+ * 5. Click "Screenshot" button
+ * 6. Save the screenshot as public/thumbnails/{splat-id}.jpg
+ * 
+ * == OPTION 2: SuperSplat Editor ==
+ * 
+ * 1. Go to: https://playcanvas.com/supersplat
+ * 2. Upload your PLY file
+ * 3. Position the camera
+ * 4. Take a screenshot (browser screenshot or export)
+ * 5. Save as public/thumbnails/{splat-id}.jpg
+ * 
+ * == Naming Convention ==
+ * 
+ * Thumbnail filenames should match the splat ID (filename without extension):
+ *   - Splat: public/splats/IMG_0058~2.ply
+ *   - Thumb: public/thumbnails/IMG_0058~2.jpg
+ * 
+ * The gallery will automatically pick up thumbnails that match this pattern.
+ */
+
 const fs = require('fs');
 const path = require('path');
 
-// Configuration - works with the production build served by "npx serve dist"
-const SPLATS_DIR = path.join(__dirname, '../public/splats');
-const THUMBS_DIR_PUBLIC = path.join(__dirname, '../public/thumbnails');
-const THUMBS_DIR_DIST = path.join(__dirname, '../dist/thumbnails');
-const URL_BASE = 'http://localhost:3000'; // Production build served by npx serve dist
+const splatsDir = path.join(__dirname, '../public/splats');
+const thumbsDir = path.join(__dirname, '../public/thumbnails');
 
-// Create both thumbnail directories
-if (!fs.existsSync(THUMBS_DIR_PUBLIC)) {
-    fs.mkdirSync(THUMBS_DIR_PUBLIC, { recursive: true });
-}
-if (!fs.existsSync(THUMBS_DIR_DIST)) {
-    fs.mkdirSync(THUMBS_DIR_DIST, { recursive: true });
+// Ensure thumbnails directory exists
+if (!fs.existsSync(thumbsDir)) {
+    fs.mkdirSync(thumbsDir, { recursive: true });
+    console.log('Created thumbnails directory:', thumbsDir);
 }
 
-async function run() {
-    console.log('Starting Thumbnail Generation...');
-    console.log('Make sure "npx serve dist" is running on port 3000');
+// List splats that need thumbnails
+const splats = fs.readdirSync(splatsDir)
+    .filter(f => /\.(ply|splat|spz|ksplat)$/i.test(f));
 
-    const browser = await puppeteer.launch({
-        headless: false, // Use non-headless for WebGL support
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--enable-webgl',
-            '--use-gl=swiftshader', // Software WebGL rendering
-            '--enable-accelerated-2d-canvas',
-            '--ignore-gpu-blocklist'
-        ]
-    });
-    const page = await browser.newPage();
+const existingThumbs = fs.readdirSync(thumbsDir)
+    .filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
+    .map(f => f.replace(/\.(jpg|jpeg|png|webp)$/i, ''));
 
-    // Set viewport to standard thumbnail size (aspect ratio 16:9)
-    await page.setViewport({ width: 1280, height: 720 });
+const needsThumbs = splats
+    .map(f => f.replace(/\.(ply|splat|spz|ksplat)$/i, ''))
+    .filter(id => !existingThumbs.includes(id));
 
-    const files = fs.readdirSync(SPLATS_DIR).filter(file => file.endsWith('.ply'));
-    console.log(`Found ${files.length} PLY files to process`);
+console.log('\n=== Thumbnail Status ===\n');
+console.log(`Total splats: ${splats.length}`);
+console.log(`Existing thumbnails: ${existingThumbs.length}`);
+console.log(`Missing thumbnails: ${needsThumbs.length}`);
 
-    for (const file of files) {
-        const splatUrl = `/splats/${file}`;
-        const thumbName = file.replace('.ply', '.jpg');
-        const thumbPathPublic = path.join(THUMBS_DIR_PUBLIC, thumbName);
-        const thumbPathDist = path.join(THUMBS_DIR_DIST, thumbName);
+if (needsThumbs.length > 0) {
+    console.log('\nSplats needing thumbnails:');
+    needsThumbs.forEach(id => console.log(`  - ${id}`));
 
-        if (fs.existsSync(thumbPathPublic) && fs.existsSync(thumbPathDist)) {
-            console.log(`Skipping existing thumbnail: ${thumbName}`);
-            continue;
-        }
-
-        console.log(`Processing: ${file}`);
-        const pageUrl = `${URL_BASE}/?splat=${encodeURIComponent(splatUrl)}`;
-
-        try {
-            await page.goto(pageUrl, { waitUntil: 'networkidle2', timeout: 60000 });
-
-            // Wait for splat to load and render
-            console.log('  Waiting for splat to render...');
-            await new Promise(resolve => setTimeout(resolve, 8000));
-
-            await page.screenshot({ path: thumbPathPublic, type: 'jpeg', quality: 85 });
-            fs.copyFileSync(thumbPathPublic, thumbPathDist);
-            console.log(`  Saved thumbnail: ${thumbName}`);
-        } catch (err) {
-            console.error(`  Failed to process ${file}:`, err.message);
-        }
-    }
-
-    await browser.close();
-    console.log('Thumbnail generation complete.');
+    console.log('\n=== How to Generate ===\n');
+    console.log('1. Run: npm run dev');
+    console.log('2. Open: http://localhost:5174/photo-splat-gallery/?view=drop');
+    console.log('3. Drop each splat file listed above');
+    console.log('4. Click "Screenshot" button');
+    console.log('5. Rename and save to: public/thumbnails/{id}.jpg');
+} else {
+    console.log('\n✓ All splats have thumbnails!');
 }
-
-run();
