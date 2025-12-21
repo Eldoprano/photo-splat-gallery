@@ -61,6 +61,7 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
 
     // AR State
     const isARSessionActiveRef = useRef(false)
+    const arBackgroundMeshRef = useRef<THREE.Mesh | null>(null)
 
     const flySpeedRef = useRef(0.05)
     const { orientation, hasPermission } = useDeviceOrientation()
@@ -74,14 +75,31 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     const shouldEnableTilt = isMobile || enableTiltControl
 
-    // React to camera feed toggle during AR
+    // React to camera feed toggle during AR - use a large sphere to block camera
     useEffect(() => {
         if (!sceneRef.current || !isARActive) return
 
         if (arShowCameraFeed) {
-            sceneRef.current.background = null // Show camera
+            // Remove background blocker if it exists
+            if (arBackgroundMeshRef.current) {
+                sceneRef.current.remove(arBackgroundMeshRef.current)
+                arBackgroundMeshRef.current.geometry.dispose()
+                    ; (arBackgroundMeshRef.current.material as THREE.Material).dispose()
+                arBackgroundMeshRef.current = null
+                console.log('[AR] Camera feed ON - background removed')
+            }
         } else {
-            sceneRef.current.background = new THREE.Color(BG_COLOR) // Hide camera (VR mode)
+            // Add a large sphere around the scene to block camera feed
+            if (!arBackgroundMeshRef.current) {
+                const geometry = new THREE.SphereGeometry(50, 32, 32)
+                const material = new THREE.MeshBasicMaterial({
+                    color: BG_COLOR,
+                    side: THREE.BackSide // Render inside of sphere
+                })
+                arBackgroundMeshRef.current = new THREE.Mesh(geometry, material)
+                sceneRef.current.add(arBackgroundMeshRef.current)
+                console.log('[AR] Camera feed OFF - background sphere added')
+            }
         }
     }, [arShowCameraFeed, isARActive])
 
@@ -416,9 +434,17 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                 currentXRSession = session
                 scene.background = null
 
-                // Reduce pixel ratio in AR for better performance on mobile
-                // Using 1 for now to debug
-                renderer.setPixelRatio(1)
+                // Reduce pixel ratio on slow devices (low CPU cores or low memory)
+                const cpuCores = navigator.hardwareConcurrency || 4
+                const deviceMemory = (navigator as any).deviceMemory || 4 // GB, defaults to 4 if unavailable
+                const isSlowDevice = cpuCores <= 4 || deviceMemory <= 4
+
+                if (isSlowDevice) {
+                    renderer.setPixelRatio(0.75)
+                    console.log(`[AR] Pixel ratio 0.75 (cores: ${cpuCores}, memory: ${deviceMemory}GB)`)
+                } else {
+                    console.log(`[AR] Full quality (cores: ${cpuCores}, memory: ${deviceMemory}GB)`)
+                }
 
                 // Initial AR Placement - closer to user with larger scale
                 // Rotate 180° on X-axis to flip right-side up (gallery uses inverted camera)
