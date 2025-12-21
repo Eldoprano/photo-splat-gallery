@@ -9,7 +9,7 @@ import DropViewer from './components/DropViewer'
 import Ingest from './components/Ingest'
 
 function App() {
-  const { viewMode, setViewMode, setCurrentSplat } = useStore()
+  const { viewMode, setViewMode, setCurrentSplat, currentSplatId } = useStore()
 
   // Tilt and XR state
   const [tiltEnabled, setTiltEnabled] = useState(false)
@@ -25,7 +25,8 @@ function App() {
       // If param is just an ID (no slashes), assume it's a .ply in splats/
       const isPath = splatParam.includes('/')
       const url = isPath ? splatParam : `splats/${splatParam}.ply`
-      setCurrentSplat(url, 'deep-linked')
+      const id = isPath ? 'custom-splat' : splatParam
+      setCurrentSplat(url, id)
       setViewMode('viewer')
     } else if (view === 'drop') {
       setViewMode('drop')
@@ -49,11 +50,26 @@ function App() {
 
   // Reset tilt/XR when exiting viewer
   useEffect(() => {
+    const isMobileNow = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    console.log('Tilt enable check:', { viewMode, isMobileNow, userAgent: navigator.userAgent })
+
     if (viewMode !== 'viewer') {
       setTiltEnabled(false)
       setXrEnabled(false)
+    } else if (isMobileNow) {
+      console.log('Enabling tilt for mobile!')
+      setTiltEnabled(true)
     }
   }, [viewMode])
+
+  // Update tab title
+  useEffect(() => {
+    if (viewMode === 'viewer' && currentSplatId) {
+      document.title = `${currentSplatId} | Splat Gallery`
+    } else {
+      document.title = 'Splat Gallery'
+    }
+  }, [viewMode, currentSplatId])
 
   return (
     <div className="w-screen h-screen bg-everforest-bg-hard text-everforest-fg relative overflow-hidden">

@@ -41,7 +41,7 @@ const processedFiles = new Set(); // To avoid infinite loops with watcher
 // CORS & Middleware
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
     next();
@@ -281,6 +281,59 @@ app.delete('/api/splats/:id', (req, res) => {
         res.status(404).json({ error: 'Splat not found' });
     } else {
         res.json({ success: true, deleted, errors });
+    }
+});
+
+// Rename Splat
+app.put('/api/splats/:id', (req, res) => {
+    const oldId = req.params.id;
+    const { newName } = req.body;
+
+    if (!newName || typeof newName !== 'string') {
+        return res.status(400).json({ error: 'newName is required' });
+    }
+
+    // Sanitize new name (remove special chars, spaces to underscores)
+    const newId = newName.trim().replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_{2,}/g, '_');
+
+    if (!newId || newId === oldId) {
+        return res.status(400).json({ error: 'Invalid or same name' });
+    }
+
+    // Check if new name already exists
+    if (fs.existsSync(path.join(SPLATS_DIR, `${newId}.ply`))) {
+        return res.status(409).json({ error: 'A splat with this name already exists' });
+    }
+
+    const filesToRename = [
+        { dir: SPLATS_DIR, ext: '.ply' },
+        { dir: COMPRESSED_DIR, ext: '.spz' },
+        { dir: THUMBS_DIR_PUBLIC, ext: '.jpg' },
+        { dir: THUMBS_DIR_DIST, ext: '.jpg' },
+        { dir: CONFIGS_DIR, ext: '.json' }
+    ];
+
+    const renamed = [];
+    const errors = [];
+
+    filesToRename.forEach(({ dir, ext }) => {
+        const oldPath = path.join(dir, `${oldId}${ext}`);
+        const newPath = path.join(dir, `${newId}${ext}`);
+
+        if (fs.existsSync(oldPath)) {
+            try {
+                fs.renameSync(oldPath, newPath);
+                renamed.push(`${oldId}${ext} -> ${newId}${ext}`);
+            } catch (err) {
+                errors.push(`Failed to rename ${oldId}${ext}: ${err.message}`);
+            }
+        }
+    });
+
+    if (renamed.length === 0 && errors.length === 0) {
+        res.status(404).json({ error: 'Splat not found' });
+    } else {
+        res.json({ success: true, newId, renamed, errors });
     }
 });
 

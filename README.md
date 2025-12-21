@@ -11,8 +11,12 @@ A nice and vibe coded 3D Gaussian Splat viewer built with React, TypeScript, and
 - 📷 View Gaussian Splats in an interactive 3D gallery
 - 🎮 Smooth navigation with WASD fly controls + mouse orbit
 - 🔮 Reveal animation when loading splats
-- 🥽 AR mode support (WebXR)
+- 🥽 AR mode support (WebXR on **Android only** - see below)
+- 📱 Lenticular postcard effect on mobile using device sensors
 - ⚡ Compressed `.spz` format for fast loading
+
+> **⚠️ iOS Note:** Safari on iPhone/iPad does **not** support WebXR AR sessions.
+> The AR feature only works on Android with Chrome/Edge. This is an Apple platform limitation.
 
 ## Tech Stack
 

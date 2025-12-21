@@ -22,9 +22,16 @@ interface AppState {
     endTransition: () => void
     // AR
     isARActive: boolean
+    arShowCameraFeed: boolean
     enterAR: () => Promise<void>
+    exitAR: () => void
     setEnterAR: (fn: () => Promise<void>) => void
+    setExitAR: (fn: () => void) => void
     setIsARActive: (active: boolean) => void
+    toggleARCameraFeed: () => void
+    // Scroll state
+    galleryScrollY: number
+    setGalleryScrollY: (y: number) => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -62,7 +69,13 @@ export const useStore = create<AppState>((set) => ({
         }
     }),
     isARActive: false,
+    arShowCameraFeed: true,
     enterAR: async () => { }, // Placeholder
+    exitAR: () => { }, // Placeholder
     setEnterAR: (fn) => set({ enterAR: fn }),
+    setExitAR: (fn) => set({ exitAR: fn }),
     setIsARActive: (active) => set({ isARActive: active }),
+    toggleARCameraFeed: () => set((state) => ({ arShowCameraFeed: !state.arShowCameraFeed })),
+    galleryScrollY: 0,
+    setGalleryScrollY: (y) => set({ galleryScrollY: y }),
 }))

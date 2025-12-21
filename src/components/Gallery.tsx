@@ -1,7 +1,7 @@
 import { useStore } from '../store'
 import { motion } from 'framer-motion'
 import { useRef, useEffect, useState } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, Github } from 'lucide-react'
 
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, '') // Remove trailing slash if any
@@ -14,7 +14,8 @@ interface SplatItem {
 }
 
 export default function Gallery() {
-    const { setViewMode, setCurrentSplat, startTransition, setIsStatic } = useStore()
+    const { setViewMode, setCurrentSplat, startTransition, setIsStatic, isStatic, galleryScrollY, setGalleryScrollY } = useStore()
+    const containerRef = useRef<HTMLDivElement>(null)
     const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
     const [splats, setSplats] = useState<SplatItem[]>([])
     const [loading, setLoading] = useState(true)
@@ -72,6 +73,17 @@ export default function Gallery() {
         fetchSplats()
     }, [setIsStatic])
 
+    // Scroll restoration
+    useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTop = galleryScrollY
+        }
+    }, [galleryScrollY, loading])
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setGalleryScrollY(e.currentTarget.scrollTop)
+    }
+
     const handleSelect = (item: SplatItem, element: HTMLDivElement | null) => {
         // Capture the thumbnail's position for the zoom animation
         if (element) {
@@ -82,23 +94,51 @@ export default function Gallery() {
             )
         }
 
+        // Update URL for shareable link
+        const newUrl = `${window.location.pathname}?splat=${encodeURIComponent(item.id)}`
+        window.history.pushState({ splatId: item.id }, '', newUrl)
+
         // Set the current splat and switch to viewer
         setCurrentSplat(item.url, item.id)
         setViewMode('viewer')
     }
 
     return (
-        <div className="p-8 w-full h-full overflow-y-auto bg-everforest-bg-hard">
+        <div
+            ref={containerRef}
+            onScroll={handleScroll}
+            className="p-8 w-full h-full overflow-y-auto bg-everforest-bg-hard"
+        >
             <div className="flex items-center justify-between mb-8">
-                <h1 className="text-4xl font-bold text-everforest-green font-display">Splat Gallery</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-4xl font-bold text-everforest-green font-display">Splat Gallery</h1>
+                    {!isStatic && (
+                        <span className="text-xs px-2 py-1 bg-everforest-orange/20 text-everforest-orange rounded-full font-medium">
+                            Dev Mode
+                        </span>
+                    )}
+                </div>
 
-                <button
-                    onClick={() => setViewMode('ingest')}
-                    className="flex items-center gap-2 px-4 py-2 bg-everforest-green text-everforest-bg-hard rounded-lg font-bold hover:bg-everforest-aqua transition-colors shadow-lg"
-                >
-                    <Upload size={20} />
-                    <span>Upload New</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <a
+                        href="https://github.com/Eldoprano/photo-splat-gallery"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-everforest-bg-medium/50 rounded-full hover:bg-everforest-bg-soft transition-colors"
+                        title="View on GitHub"
+                    >
+                        <Github size={20} className="text-everforest-fg" />
+                    </a>
+                    {!isStatic && (
+                        <button
+                            onClick={() => setViewMode('ingest')}
+                            className="flex items-center gap-2 px-4 py-2 bg-everforest-green text-everforest-bg-hard rounded-lg font-bold hover:bg-everforest-aqua transition-colors shadow-lg"
+                        >
+                            <Upload size={20} />
+                            <span>Upload New</span>
+                        </button>
+                    )}
+                </div>
             </div>
 
             {loading && (
@@ -126,6 +166,7 @@ export default function Gallery() {
                         <img
                             src={item.thumbnail}
                             alt={item.name}
+                            loading="lazy"
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 // Hide broken image, show placeholder

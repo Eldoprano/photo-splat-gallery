@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { SplatMesh, SplatFileType, dyno } from '@sparkjsdev/spark'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'
-import { Camera, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Camera, Trash2, CheckCircle2, AlertCircle, Pencil } from 'lucide-react'
 
 interface SplatViewerProps {
     enableTiltControl?: boolean
@@ -12,7 +12,15 @@ interface SplatViewerProps {
 }
 
 // Everforest bg-hard color
-import { CAMERA_SETTINGS, BG_COLOR } from '../constants'
+import {
+    CAMERA_SETTINGS,
+    BG_COLOR,
+    MOBILE_ZOOM_SPEED,
+    AR_INITIAL_DISTANCE,
+    AR_INITIAL_SCALE,
+    AR_MIN_SCALE,
+    AR_MAX_SCALE
+} from '../constants'
 
 declare global {
     interface Window {
@@ -32,7 +40,7 @@ function getFileType(filename: string): SplatFileType | undefined {
 }
 
 export default function SplatViewer({ enableTiltControl = false, enableXR = false }: SplatViewerProps) {
-    const { currentSplat, currentSplatId, currentSplatFormat, setCurrentSplat, setViewMode, isStatic } = useStore()
+    const { currentSplat, currentSplatId, currentSplatFormat, setCurrentSplat, setViewMode, isStatic, arShowCameraFeed, isARActive } = useStore()
     const containerRef = useRef<HTMLDivElement>(null)
     const sceneRef = useRef<THREE.Scene | null>(null)
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -49,6 +57,7 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
     const [isSaving, setIsSaving] = useState(false)
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isRenaming, setIsRenaming] = useState(false)
 
     // AR State
     const isARSessionActiveRef = useRef(false)
@@ -60,6 +69,21 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
     const isMinimal = new URLSearchParams(window.location.search).get('clean') === 'true'
     const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, '')
     const pendingConfigRef = useRef<{ position: number[], target: number[], up: number[] } | null>(null)
+
+    // Detect if mobile device - AUTO-ENABLE TILT ON MOBILE
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const shouldEnableTilt = isMobile || enableTiltControl
+
+    // React to camera feed toggle during AR
+    useEffect(() => {
+        if (!sceneRef.current || !isARActive) return
+
+        if (arShowCameraFeed) {
+            sceneRef.current.background = null // Show camera
+        } else {
+            sceneRef.current.background = new THREE.Color(BG_COLOR) // Hide camera (VR mode)
+        }
+    }, [arShowCameraFeed, isARActive])
 
     // Fetch initial config
     useEffect(() => {
@@ -158,38 +182,68 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
         }
     };
 
-    // Tilt control (Parallax Effect)
+    // Lenticular Effect - Velocity-based tilt control like mouse drag
+    // Track current orbit angles (persistent across frames)
+    const orbitAnglesRef = useRef<{ theta: number, phi: number } | null>(null)
+    const lastTiltRef = useRef<{ beta: number, gamma: number } | null>(null)
+
     useEffect(() => {
-        if (!enableTiltControl || !hasPermission || !contentGroupRef.current || isARSessionActiveRef.current) return
+        if (!shouldEnableTilt || !hasPermission || !cameraRef.current || !controlsRef.current || isARSessionActiveRef.current) return
         const { beta, gamma } = orientation
         if (beta === null || gamma === null) return
 
-        // Parallax effect: Move content OPPOSITE to tilt
-        // Beta: x-axis tilt (front/back) -> move Y
-        // Gamma: y-axis tilt (left/right) -> move X
-        const sensitivity = 0.05 // Subtle movement
-        const maxOffset = 1.0 // Max translation units
+        const camera = cameraRef.current
+        const controls = controlsRef.current
+        const target = controls.target.clone()
+        const offset = camera.position.clone().sub(target)
+        const radius = offset.length()
 
-        // Normalize angles (-45 to 45 degrees mostly relevant for holding)
-        const normalizedBeta = Math.max(-45, Math.min(45, beta)) / 45
-        const normalizedGamma = Math.max(-45, Math.min(45, gamma)) / 45
+        // Initialize orbit angles from current camera position on first reading
+        if (!orbitAnglesRef.current) {
+            orbitAnglesRef.current = {
+                theta: Math.atan2(offset.x, offset.z),
+                phi: Math.acos(Math.max(-1, Math.min(1, offset.y / radius)))
+            }
+            lastTiltRef.current = { beta, gamma }
+            return
+        }
 
-        // Target positions
-        const targetX = normalizedGamma * maxOffset * sensitivity
-        const targetY = -normalizedBeta * maxOffset * sensitivity // Negative because tilting back (pos beta) should move content down? or up?
-        // Actually: Tilting phone TOP back (pos beta) -> user looks "down" into scene -> content should move UP to reveal bottom?
-        // Standard Parallax: Move content opposite to camera movement.
-        // Tilting phone right (pos gamma) -> Camera moves right -> Content should move LEFT (negative X).
+        // Calculate delta (change) from last frame - this is the "velocity"
+        const deltaBeta = beta - (lastTiltRef.current?.beta ?? beta)
+        const deltaGamma = gamma - (lastTiltRef.current?.gamma ?? gamma)
+        lastTiltRef.current = { beta, gamma }
 
-        // We lerp for smoothness in the animation loop usually, but here is reactive.
-        // Direct assignment is okay if sensor rate is high, but lerp is better.
-        // For simplicity in this useEffect, we'll straight assign but dampened by sensitivity.
+        // Apply deltas with sensitivity (like mouse drag)
+        const sensitivity = 0.015
+        orbitAnglesRef.current.theta += deltaGamma * sensitivity
+        orbitAnglesRef.current.phi += deltaBeta * sensitivity * 0.5
 
-        // Note: Tilt control works best when "looking through a window".
-        contentGroupRef.current.position.x = -targetX
-        contentGroupRef.current.position.y = targetY
+        // Clamp orbit angles to boundaries
+        // Theta (horizontal): Allow ±60° from initial position
+        const maxTheta = Math.PI / 3  // 60 degrees
+        const initialTheta = Math.atan2(CAMERA_SETTINGS.position.x - CAMERA_SETTINGS.target.x,
+            CAMERA_SETTINGS.position.z - CAMERA_SETTINGS.target.z)
+        orbitAnglesRef.current.theta = Math.max(initialTheta - maxTheta,
+            Math.min(initialTheta + maxTheta, orbitAnglesRef.current.theta))
 
-    }, [orientation, enableTiltControl, hasPermission])
+        // Phi (vertical): Keep between 20° and 160° to avoid flipping
+        orbitAnglesRef.current.phi = Math.max(0.35, Math.min(Math.PI - 0.35, orbitAnglesRef.current.phi))
+
+        // Convert spherical to Cartesian
+        const theta = orbitAnglesRef.current.theta
+        const phi = orbitAnglesRef.current.phi
+        const newOffset = new THREE.Vector3(
+            radius * Math.sin(phi) * Math.sin(theta),
+            radius * Math.cos(phi),
+            radius * Math.sin(phi) * Math.cos(theta)
+        )
+
+        // Set camera position with lerp for smoothness
+        const newPos = target.clone().add(newOffset)
+        camera.position.lerp(newPos, 0.15)
+        camera.lookAt(target)
+
+    }, [orientation, shouldEnableTilt, hasPermission])
 
     // Keyboard
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -290,8 +344,16 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
         controls.enableDamping = true
         controls.dampingFactor = 0.1
         controls.rotateSpeed = 0.4
-        controls.zoomSpeed = 0.5
+        // Use slower zoom on mobile for better control
+        controls.zoomSpeed = isMobile ? MOBILE_ZOOM_SPEED : 0.5
         controls.target.copy(CAMERA_SETTINGS.target)
+
+        // Disable rotate/pan in lenticular mode (sensors control camera)
+        if (enableTiltControl && isMobile) {
+            controls.enableRotate = false
+            controls.enablePan = false
+        }
+
         controls.update()
         controlsRef.current = controls
 
@@ -307,7 +369,8 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
 
         // AR Session Logic
         // Register the enterAR function to the store so UIOverlay can call it
-        const { setEnterAR, setIsARActive } = useStore.getState() // Access store directly inside effect to avoid deps issues if possible or use hook outside
+        const { setEnterAR, setExitAR, setIsARActive } = useStore.getState()
+        let currentXRSession: XRSession | null = null
 
         // Define the AR starter function
         const startAR = async () => {
@@ -316,7 +379,8 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                 const session = await navigator.xr.requestSession('immersive-ar', {
                     requiredFeatures: ['hit-test'],
                     optionalFeatures: ['dom-overlay'],
-                    domOverlay: { root: containerRef.current! }
+                    // Get the motion.div wrapper that contains both SplatViewer and UIOverlay
+                    domOverlay: { root: containerRef.current?.parentElement?.parentElement || document.body }
                 })
                 renderer.xr.setReferenceSpaceType('local')
                 await renderer.xr.setSession(session)
@@ -341,18 +405,26 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                     // Remove pinch handlers
                     containerRef.current?.removeEventListener('touchstart', handleTouchStart as any)
                     containerRef.current?.removeEventListener('touchmove', handleTouchMove as any)
+
+                    // Restore pixel ratio
+                    renderer.setPixelRatio(1)
                 })
 
                 // AR Started
                 setIsARActive(true)
                 isARSessionActiveRef.current = true
+                currentXRSession = session
                 scene.background = null
 
-                // Initial AR Placement
+                // Reduce pixel ratio in AR for better performance on mobile
+                // Using 1 for now to debug
+                renderer.setPixelRatio(1)
+
+                // Initial AR Placement - closer to user with larger scale
                 // Rotate 180° on X-axis to flip right-side up (gallery uses inverted camera)
                 if (contentGroupRef.current) {
-                    contentGroupRef.current.position.set(0, 0, -2) // 2 meters in front
-                    contentGroupRef.current.scale.setScalar(0.5)
+                    contentGroupRef.current.position.set(0, 0, -AR_INITIAL_DISTANCE)
+                    contentGroupRef.current.scale.setScalar(AR_INITIAL_SCALE)
                     contentGroupRef.current.rotation.set(Math.PI, 0, 0) // Flip 180° on X
                 }
 
@@ -386,7 +458,9 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                 if (lastPinchDistance > 0) {
                     const scaleFactor = distance / lastPinchDistance
                     const currentScale = contentGroupRef.current.scale.x
-                    const newScale = Math.max(0.1, Math.min(3, currentScale * scaleFactor))
+                    // Smoother scaling with lerp, extended range for closer inspection
+                    const targetScale = Math.max(AR_MIN_SCALE, Math.min(AR_MAX_SCALE, currentScale * scaleFactor))
+                    const newScale = currentScale + (targetScale - currentScale) * 0.3 // Damped scaling
                     contentGroupRef.current.scale.setScalar(newScale)
                 }
                 lastPinchDistance = distance
@@ -394,6 +468,15 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
         }
 
         setEnterAR(startAR)
+
+        // Define the AR exit function
+        const stopAR = () => {
+            if (currentXRSession) {
+                currentXRSession.end()
+                currentXRSession = null
+            }
+        }
+        setExitAR(stopAR)
 
         // Load splat
         const opts: any = { url: currentSplat }
@@ -554,15 +637,15 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                 style={{ width: '100%', height: '100%' }}
             />
 
-            {/* Controls hint */}
-            {!isMinimal && (
+            {/* Controls hint - hide on mobile */}
+            {!isMinimal && !isMobile && (
                 <div className="absolute bottom-2 left-2 text-everforest-fg/30 text-xs shadow-black/50 drop-shadow-md pointer-events-none">
                     WASD: Fly • Q/E: Up/Down • Space: Pointcloud • Mouse: Orbit
                 </div>
             )}
 
-            {/* Action Buttons (Right Side) - Only show when API is available */}
-            {!isMinimal && !isStatic && currentSplatId && !enableXR && (
+            {/* Action Buttons (Right Side) - Only show when API is available and not in AR */}
+            {!isMinimal && !isStatic && currentSplatId && !isARActive && (
                 <div className="absolute top-1/2 right-4 -translate-y-1/2 flex flex-col gap-4 pointer-events-auto z-50">
                     <button
                         onClick={handleSaveView}
@@ -585,6 +668,56 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
                         title="Delete Splat"
                     >
                         {isDeleting ? <div className="w-6 h-6 border-2 border-everforest-red border-t-transparent rounded-full animate-spin" /> : <Trash2 size={24} />}
+                    </button>
+
+                    <button
+                        onClick={async () => {
+                            if (!currentSplatId || currentSplatId === 'custom-splat') {
+                                alert("Cannot rename a custom-loaded splat.");
+                                return;
+                            }
+                            const newName = prompt('Enter new name for this splat:', currentSplatId);
+                            if (!newName || newName === currentSplatId) return;
+
+                            setIsRenaming(true);
+                            try {
+                                const res = await fetch(`/api/splats/${currentSplatId}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ newName })
+                                });
+                                if (res.ok) {
+                                    const data = await res.json();
+                                    const newId = data.newId;
+
+                                    // Update store state so saves/references work with new ID
+                                    // Construct new URL (maintaining whatever format was used)
+                                    if (currentSplat) {
+                                        const newSplatUrl = currentSplat.replace(`/${currentSplatId}.`, `/${newId}.`);
+                                        setCurrentSplat(newSplatUrl, newId);
+                                    }
+
+                                    // Update browser URL
+                                    const newBrowserUrl = `${window.location.pathname}?splat=${encodeURIComponent(newId)}`;
+                                    window.history.replaceState({ splatId: newId }, '', newBrowserUrl);
+
+                                    alert(`Successfully renamed to: ${newId}`);
+                                } else {
+                                    const err = await res.json();
+                                    alert(err.error || 'Failed to rename');
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                alert('Failed to rename splat. Is the API server running?');
+                            } finally {
+                                setIsRenaming(false);
+                            }
+                        }}
+                        disabled={isRenaming}
+                        className="p-3 rounded-full backdrop-blur-md bg-everforest-bg-medium/50 text-everforest-fg hover:bg-everforest-bg-soft transition-all shadow-lg"
+                        title="Rename Splat"
+                    >
+                        {isRenaming ? <div className="w-6 h-6 border-2 border-everforest-fg border-t-transparent rounded-full animate-spin" /> : <Pencil size={24} />}
                     </button>
                 </div>
             )}
