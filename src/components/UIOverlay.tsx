@@ -1,4 +1,4 @@
-import { ArrowLeft, Box, Eye, EyeOff, X, Smartphone } from 'lucide-react'
+import { ArrowLeft, Box, Eye, EyeOff, X, Smartphone, Maximize, Minimize } from 'lucide-react'
 import { useStore } from '../store'
 import { useEffect, useState } from 'react'
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'
@@ -7,9 +7,33 @@ export default function UIOverlay() {
     const { setViewMode, setCurrentSplat, enterAR, exitAR, isARActive, arShowCameraFeed, toggleARCameraFeed } = useStore()
     const { hasPermission, requestPermission, isMobile, orientation } = useDeviceOrientation()
     const [showSensorButton, setShowSensorButton] = useState(false)
+    const [isFullscreen, setIsFullscreen] = useState(false)
 
     // Check for clean mode synchronously
     const isClean = new URLSearchParams(window.location.search).get('clean') === 'true'
+
+    // Handle fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement)
+        }
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }, [])
+
+    const toggleFullscreen = async () => {
+        if (!document.fullscreenElement) {
+            try {
+                await document.documentElement.requestFullscreen()
+            } catch (e) {
+                console.error("Failed to enter fullscreen", e)
+            }
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen()
+            }
+        }
+    }
 
     // Show sensor button if on mobile and orientation isn't working
     useEffect(() => {
@@ -56,6 +80,15 @@ export default function UIOverlay() {
                 </button>
 
                 <div className="flex gap-2 pointer-events-auto">
+                    {/* Fullscreen Toggle */}
+                    <button
+                        onClick={toggleFullscreen}
+                        className="p-2 rounded-full backdrop-blur bg-everforest-bg-medium/50 text-everforest-fg hover:bg-everforest-bg-soft transition-colors"
+                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                    >
+                        {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+                    </button>
+
                     {/* AR Camera Feed Toggle - Only during AR */}
                     {isARActive && (
                         <button
