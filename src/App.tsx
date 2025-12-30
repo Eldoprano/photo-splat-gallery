@@ -41,7 +41,7 @@ function App() {
       if (e.key === 'Escape' && (viewMode === 'viewer' || viewMode === 'drop' || viewMode === 'ingest')) {
         setCurrentSplat(null)
         setViewMode('gallery')
-        window.history.pushState({}, '', '/')
+        window.history.pushState({}, '', window.location.pathname)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
