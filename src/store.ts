@@ -20,6 +20,9 @@ interface AppState {
     setIsStatic: (isStatic: boolean) => void
     startTransition: (rect: TransitionState['thumbnailRect'], thumbUrl: string) => void
     endTransition: () => void
+    // Loading State
+    isSplatLoaded: boolean
+    setIsSplatLoaded: (loaded: boolean) => void
     // AR
     isARActive: boolean
     arShowCameraFeed: boolean
@@ -68,6 +71,8 @@ export const useStore = create<AppState>((set) => ({
             thumbnailUrl: null,
         }
     }),
+    isSplatLoaded: false,
+    setIsSplatLoaded: (loaded) => set({ isSplatLoaded: loaded }),
     isARActive: false,
     arShowCameraFeed: true,
     enterAR: async () => { }, // Placeholder
