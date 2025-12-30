@@ -40,7 +40,7 @@ function getFileType(filename: string): SplatFileType | undefined {
 }
 
 export default function SplatViewer({ enableTiltControl = false, enableXR = false }: SplatViewerProps) {
-    const { currentSplat, currentSplatId, currentSplatFormat, setCurrentSplat, setViewMode, isStatic, arShowCameraFeed, isARActive } = useStore()
+    const { currentSplat, currentSplatId, currentSplatFormat, setCurrentSplat, setViewMode, isStatic, arShowCameraFeed, isARActive, setIsSplatLoaded } = useStore()
     const containerRef = useRef<HTMLDivElement>(null)
     const sceneRef = useRef<THREE.Scene | null>(null)
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
@@ -514,7 +514,7 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
         const startT = isMinimal ? 100 : 0
         const animateT = dyno.dynoFloat(startT)
         animateTimeRef.current = animateT
-        loadStartTimeRef.current = isMinimal ? 0 : performance.now()
+        loadStartTimeRef.current = 0 // Will be set to performance.now() when loaded
 
         // Pointcloud mode toggle (reactive dynoFloat)
         const isPointcloudDyno = dyno.dynoFloat(0)
@@ -588,13 +588,17 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
             loadedSplat.updateGenerator()
 
             // Signal loaded
+            loadStartTimeRef.current = isMinimal ? 0 : performance.now()
+
             if (isMinimal) {
                 // Ensure frame render happened
                 requestAnimationFrame(() => {
                     window.isSplatLoaded = true;
+                    setIsSplatLoaded(true)
                 });
             } else {
                 window.isSplatLoaded = true;
+                setIsSplatLoaded(true)
             }
         }
 
@@ -637,6 +641,7 @@ export default function SplatViewer({ enableTiltControl = false, enableXR = fals
         // Cleanup function updates
         return () => {
             window.isSplatLoaded = false;
+            setIsSplatLoaded(false)
             window.removeEventListener('resize', handleResize)
             window.removeEventListener('keydown', handleKeyDown)
             window.removeEventListener('keyup', handleKeyUp)

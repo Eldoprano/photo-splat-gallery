@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { useEffect, useState, useRef } from 'react'
 
 export default function ZoomTransition() {
-    const { transition, viewMode, endTransition } = useStore()
+    const { transition, viewMode, endTransition, isSplatLoaded } = useStore()
     const [phase, setPhase] = useState<'idle' | 'zooming' | 'holding' | 'fading'>('idle')
     const animationRef = useRef<{ startX: number; startY: number; startScale: number } | null>(null)
 
@@ -43,16 +43,26 @@ export default function ZoomTransition() {
                 ease: [0.22, 1, 0.36, 1], // Custom easing for dramatic effect
             })
 
-            // After zoom completes, hold then fade
+            // After zoom completes, enter holding phase
             setTimeout(() => setPhase('holding'), 600)
-            setTimeout(() => setPhase('fading'), 1000)
-            setTimeout(() => {
+        }
+    }, [transition.isTransitioning, transition.thumbnailRect, viewMode, progress])
+
+    // Manage phase transitions based on loading state
+    useEffect(() => {
+        if (phase === 'holding' && isSplatLoaded) {
+            // Once loaded, start fading out
+            setPhase('fading')
+        } else if (phase === 'fading') {
+            // Wait for fade animation to complete
+            const timer = setTimeout(() => {
                 setPhase('idle')
                 progress.set(0)
                 endTransition()
-            }, 1600)
+            }, 500)
+            return () => clearTimeout(timer)
         }
-    }, [transition.isTransitioning, transition.thumbnailRect, viewMode, endTransition, progress])
+    }, [phase, isSplatLoaded, endTransition, progress])
 
     if (phase === 'idle' || !transition.thumbnailUrl || !animationRef.current) {
         return null
